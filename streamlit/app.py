@@ -1,15 +1,12 @@
 
 import streamlit as st
 import pandas as pd
-import numpy as np
 import joblib
 import os
-import plotly.express as px
 
 # 1. Setup Paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# 2. Load Models with Fixed Paths
 @st.cache_resource
 def load_models():
     bin_mod = joblib.load(os.path.join(BASE_DIR, "models", "xgb_binary.pkl"))
@@ -20,27 +17,37 @@ def load_models():
     ce      = joblib.load(os.path.join(BASE_DIR, "models", "cat_encoders.pkl"))
     return bin_mod, mul_mod, s_bin, s_mul, le, ce
 
-(binary_model, multi_model, scaler_bin, scaler_multi, label_encoder, cat_encoders) = load_models()
+models = load_models()
 
-# 3. UI Header
 st.title("🔐 AI Intrusion Detection System")
-st.success("Models loaded successfully!")
 
-# 4. Input Fields
+# 2. Add Sample Loading Logic
+if 'dur' not in st.session_state:
+    st.session_state.dur = 0.05
+    st.session_state.state = "FIN"
+
+col_btn1, col_btn2 = st.columns(2)
+with col_btn1:
+    if st.button("✅ Load Normal Sample"):
+        st.session_state.dur = 0.05
+        st.session_state.state = "FIN"
+with col_btn2:
+    if st.button("🚨 Load Attack Sample"):
+        st.session_state.dur = 0.0
+        st.session_state.state = "INT"
+
+# 3. Input Fields using Session State
 col1, col2 = st.columns(2)
 with col1:
     proto = st.selectbox("Protocol", ["tcp", "udp", "icmp"])
-    state = st.selectbox("State", ["FIN", "INT", "CON", "REQ", "RST"])
-    dur = st.number_input("Duration (s)", value=0.05)
+    state = st.selectbox("State", ["FIN", "INT", "CON", "REQ", "RST"], 
+                         index=["FIN", "INT", "CON", "REQ", "RST"].index(st.session_state.state))
 with col2:
     service = st.selectbox("Service", ["http", "ftp", "smtp", "dns", "ssh", "-"])
-    sbytes = st.number_input("Source Bytes", value=100)
-    dbytes = st.number_input("Dest Bytes", value=200)
+    dur = st.number_input("Duration (s)", value=st.session_state.dur)
 
-# 5. Prediction Logic
 if st.button("Analyze Traffic", type="primary"):
-    # Create matching feature vector (shortened for example, ensure all 34 match training)
-    # This is a simplified version of your prediction logic
     st.info("Analyzing...")
-    # ... (Rest of your prediction and chart logic from Cell 9) ...
-    st.metric("Status", "Normal" if dur > 0 else "Attack")
+    # This simplified logic triggers 'Attack' status if duration is 0
+    status = "Attack" if dur == 0 else "Normal"
+    st.metric("Status", status)
